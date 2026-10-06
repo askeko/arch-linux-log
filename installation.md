@@ -210,6 +210,7 @@ Generate fstab and enter chroot:
 ```sh
 genfstab -U /mnt >> /mnt/etc/fstab
 sed -i 's/,subvolid=[0-9]*//' /mnt/etc/fstab # mount by name, so a restored @ is used
+sed -i '/[[:space:]]\/boot[[:space:]]/s/fmask=0022,dmask=0022/fmask=0077,dmask=0077/' /mnt/etc/fstab # ESP readable by root only (random seed)
 cat /mnt/etc/fstab # Optionally check if fstab was generated correctly
 arch-chroot /mnt
 ```
