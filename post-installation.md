@@ -84,9 +84,13 @@ recovery key down and keep it away from the computer ([systemd-cryptenroll]).
 ```sh
 lsblk -f # the crypto_LUKS partition is /dev/root_partition
 sudo systemd-cryptenroll --fido2-device=auto /dev/root_partition # once per key
+sudo systemd-cryptenroll --recovery-key /dev/root_partition
+sudo cryptsetup open --test-passphrase /dev/root_partition # type the stored recovery key
 ```
 
-TODO: Remove password from encryption and let only yubikey unlock? Should be safe with 2 keys.
+Keep a typed secret: an update that breaks FIDO2 unlock locks out both keys.
+To drop the everyday passphrase once the recovery key is stored:
+`sudo systemd-cryptenroll --wipe-slot=password /dev/root_partition`.
 
 Add `rd.luks.options=LUKS_UUID=fido2-device=auto` to `/etc/kernel/cmdline`,
 with the same UUID as in `rd.luks.name`, then update the boot entries:
