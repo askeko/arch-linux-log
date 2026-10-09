@@ -161,11 +161,12 @@ cryptsetup open --allow-discards --perf-no_read_workqueue --perf-no_write_workqu
 | `@pkg`       | `/var/cache/pacman/pkg`   | package cache, not snapshotted     |
 | `@docker`    | `/var/lib/docker`         | containers, not snapshotted        |
 | `@libvirt`   | `/var/lib/libvirt/images` | VM images, not snapshotted         |
+| `@nix`       | `/nix`                    | Nix store, not snapshotted         |
 
 ```sh
 mkfs.btrfs -L arch /dev/mapper/root
 mount /dev/mapper/root /mnt
-for sv in @ @home @snapshots @log @pkg @docker @libvirt; do btrfs subvolume create /mnt/$sv; done
+for sv in @ @home @snapshots @log @pkg @docker @libvirt @nix; do btrfs subvolume create /mnt/$sv; done
 umount /mnt
 ```
 
@@ -179,6 +180,7 @@ mount --mkdir -o noatime,compress=zstd,subvol=@log /dev/mapper/root /mnt/var/log
 mount --mkdir -o noatime,compress=zstd,subvol=@pkg /dev/mapper/root /mnt/var/cache/pacman/pkg
 mount --mkdir -o noatime,compress=zstd,subvol=@docker /dev/mapper/root /mnt/var/lib/docker
 mount --mkdir -o noatime,subvol=@libvirt /dev/mapper/root /mnt/var/lib/libvirt/images
+mount --mkdir -o noatime,compress=zstd,subvol=@nix /dev/mapper/root /mnt/nix
 chattr +C /mnt/var/lib/libvirt/images # no copy-on-write for VM images
 mount --mkdir /dev/efi_system_partition /mnt/boot
 ```

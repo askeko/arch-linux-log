@@ -103,6 +103,32 @@ sudo limine-update
 At boot, touch the key (and enter its PIN if it has one). Without the key, the
 passphrase prompt appears after 30 seconds.
 
+### YubiKey Login
+
+Every login (TTY, tuigreet, lock screen) asks for the password, then a touch on
+a YubiKey (the key blinks; hyprlock shows no prompt). Until the mapping file
+exists the password alone logs in. Pulling out a key locks the screen, so
+register both keys into a temporary file (the swap locks; unlock with the
+password) and move it into place last:
+
+```sh
+mkdir -p ~/.config/Yubico
+pamu2fcfg    > ~/.config/Yubico/u2f_keys.new # first key, touch when it blinks
+pamu2fcfg -n >> ~/.config/Yubico/u2f_keys.new # second key
+mv ~/.config/Yubico/u2f_keys.new ~/.config/Yubico/u2f_keys
+```
+
+Stuck lock screen: `Ctrl+Alt+F2`, log in (password + touch), `pkill -USR1 hyprlock`.
+
+Both keys lost: boot the Arch ISO, unlock with the recovery key, delete the
+mapping file:
+
+```sh
+cryptsetup open /dev/root_partition root
+mount -o subvol=@home /dev/mapper/root /mnt
+rm /mnt/USER/.config/Yubico/u2f_keys
+```
+
 ## Accounts
 
 ### GitHub
@@ -148,6 +174,16 @@ tab bar.
 
 The first start downloads LazyVim's plugins and Mason's language servers.
 Check with `:checkhealth lazyvim` and `:Mason`.
+
+### Nix
+
+For programs needed once, and project dev shells. CLI tools only: GUI apps from
+Nix can't find Arch's GPU drivers. Unused store paths are removed weekly.
+
+```sh
+nix shell nixpkgs#ffmpeg # gone when the shell exits
+echo 'use flake' > .envrc && direnv allow # project with a flake.nix
+```
 
 ## WireGuard
 
