@@ -77,11 +77,12 @@ Keep a typed secret: an update that breaks FIDO2 unlock locks out both keys.
 To drop the everyday passphrase once the recovery key is stored:
 `sudo systemd-cryptenroll --wipe-slot=password /dev/root_partition`.
 
-Add `rd.luks.options=LUKS_UUID=fido2-device=auto` to `/etc/kernel/cmdline`,
-with the same UUID as in `rd.luks.name`, then update the boot entries:
+Make the initramfs try the key first (the option reuses the UUID from
+`rd.luks.name`), then update the boot entries:
 
 ```sh
-sudo nvim /etc/kernel/cmdline
+grep -q fido2-device /etc/kernel/cmdline ||
+    sudo sed -i 's/rd\.luks\.name=\([^=]*\)=root/& rd.luks.options=\1=fido2-device=auto/' /etc/kernel/cmdline
 sudo limine-update
 ```
 

@@ -25,16 +25,7 @@
     - [Set System Clock](#set-system-clock)
     - [Partitioning](#partitioning)
     - [Encryption](#encryption)
-    - [Btrfs Subvolumes](#btrfs-subvolumes)
-    - [Configure Mirrors](#configure-mirrors)
-    - [Installing the Base System](#installing-the-base-system)
-    - [Time](#time)
-    - [Localization](#localization)
-    - [Internet connection](#internet-connection)
-    - [Hostname](#hostname)
-    - [Initramfs](#initramfs)
-    - [Bootloader](#bootloader)
-    - [Password](#password)
+    - [Btrfs and Base System](#btrfs-and-base-system)
     - [Reboot](#reboot)
 <!--toc:end-->
 
@@ -150,7 +141,7 @@ cryptsetup luksFormat /dev/root_partition
 cryptsetup open --allow-discards --perf-no_read_workqueue --perf-no_write_workqueue --persistent /dev/root_partition root
 ```
 
-### Btrfs Subvolumes
+### Btrfs and Base System
 
 | Subvolume    | Mount                     | Why separate                       |
 | ------------ | ------------------------- | ---------------------------------- |
@@ -165,162 +156,24 @@ cryptsetup open --allow-discards --perf-no_read_workqueue --perf-no_write_workqu
 
 ```sh
 mkfs.btrfs -L arch /dev/mapper/root
-mount /dev/mapper/root /mnt
-for sv in @ @home @snapshots @log @pkg @docker @libvirt @nix; do btrfs subvolume create /mnt/$sv; done
-umount /mnt
 ```
 
-Mount them, and the EFI partition at `/boot`:
+[install.sh](https://github.com/askeko/aarbs/blob/main/install.sh) from aarbs
+does the rest. Use `lazarus` (desktop) or `halflight` (laptop) as the hostname:
+the dotfiles pick lazarus' monitor setup by hostname. Use something else, like
+`archtest`, in a VM.
 
 ```sh
-mount -o noatime,compress=zstd,subvol=@ /dev/mapper/root /mnt
-mount --mkdir -o noatime,compress=zstd,subvol=@home /dev/mapper/root /mnt/home
-mount --mkdir -o noatime,compress=zstd,subvol=@snapshots /dev/mapper/root /mnt/.snapshots
-mount --mkdir -o noatime,compress=zstd,subvol=@log /dev/mapper/root /mnt/var/log
-mount --mkdir -o noatime,compress=zstd,subvol=@pkg /dev/mapper/root /mnt/var/cache/pacman/pkg
-mount --mkdir -o noatime,compress=zstd,subvol=@docker /dev/mapper/root /mnt/var/lib/docker
-mount --mkdir -o noatime,subvol=@libvirt /dev/mapper/root /mnt/var/lib/libvirt/images
-mount --mkdir -o noatime,compress=zstd,subvol=@nix /dev/mapper/root /mnt/nix
-chattr +C /mnt/var/lib/libvirt/images # no copy-on-write for VM images
-mount --mkdir /dev/efi_system_partition /mnt/boot
+curl -O https://raw.githubusercontent.com/askeko/aarbs/main/install.sh
+sh install.sh /dev/root_partition /dev/efi_system_partition some_name
 ```
 
-Verify with `lsblk`.
-
-### Configure Mirrors
-
-Rank nearby mirrors before `pacstrap`, which copies the mirrorlist into the new
-system. The ISO's default ranking can put a slow mirror from another continent
-first. See [Reflector](https://wiki.archlinux.org/title/Reflector).
-
-```sh
-reflector --country Denmark,Germany,Sweden --protocol https --latest 10 --sort rate --save /etc/pacman.d/mirrorlist
-```
-
-### Installing the Base System
-
-Install essential packages (replace amd for intel if necessary, skip the
-microcode in a VM). `libfido2` (YubiKey unlock) and `plymouth` (boot splash)
-go into the initramfs. aarbs installs everything else later.
-
-```sh
-pacstrap -K /mnt base linux linux-firmware amd-ucode btrfs-progs libfido2 plymouth limine efibootmgr networkmanager neovim
-```
-
-Generate fstab and enter chroot:
-
-```sh
-genfstab -U /mnt >> /mnt/etc/fstab
-sed -i 's/,subvolid=[0-9]*//' /mnt/etc/fstab # mount by name, so a restored @ is used
-sed -i '/[[:space:]]\/boot[[:space:]]/s/fmask=0022,dmask=0022/fmask=0077,dmask=0077/' /mnt/etc/fstab # ESP readable by root only (random seed)
-cat /mnt/etc/fstab # Optionally check if fstab was generated correctly
-arch-chroot /mnt
-```
-
-### Time
-
-```sh
-ln -sf /usr/share/zoneinfo/Europe/Copenhagen /etc/localtime
-hwclock --systohc
-systemctl enable systemd-timesyncd.service
-```
-
-### Localization
-
-Uncomment `en_DK.UTF-8 UTF-8` and `en_US.UTF-8 UTF-8`:
-
-```sh
-nvim /etc/locale.gen
-locale-gen # generate uncommented locales
-echo LANG=en_DK.UTF-8 > /etc/locale.conf
-echo KEYMAP=dk > /etc/vconsole.conf # also the layout for the disk passphrase
-```
-
-### Internet connection
-
-```sh
-systemctl enable NetworkManager.service
-```
-
-### Hostname
-
-Use `lazarus` (desktop) or `halflight` (laptop): the dotfiles pick lazarus'
-monitor setup by hostname. Use something else, like `archtest`, in a VM.
-
-```sh
-echo some_name > /etc/hostname # replace some_name with the hostname
-```
-
-### Initramfs
-
-The initramfs unlocks the disk (`sd-encrypt`) behind a Plymouth splash.
-`keyboard` comes before `autodetect`, so any keyboard works for the passphrase.
-
-```sh
-/etc/mkinitcpio.conf.d/arch.conf
---------------------------------
-HOOKS=(base systemd plymouth keyboard autodetect microcode modconf kms sd-vconsole block sd-encrypt filesystems fsck)
-```
-
-Kernel parameters, with the UUID of the encrypted partition (`zswap` is off,
-since it gets in the way of zram):
-
-```sh
-echo "rd.luks.name=$(blkid -s UUID -o value /dev/root_partition)=root root=/dev/mapper/root rootflags=subvol=@ rw quiet splash zswap.enabled=0" > /etc/kernel/cmdline
-```
-
-Rebuild the initramfs with these hooks:
-
-```sh
-mkinitcpio -P
-```
-
-### Bootloader
-
-Limine, with a first boot entry. aarbs later hands the entries over to
-limine-entry-tool (kernel updates) and limine-snapper-sync (snapshots in the
-boot menu), and removes this one. Replace `X` with the drive as before:
-
-```sh
-mkdir -p /boot/EFI/limine
-cp /usr/share/limine/BOOTX64.EFI /boot/EFI/limine/limine_x64.efi
-efibootmgr --create --disk /dev/X --part 1 --label "Limine" --loader '\EFI\limine\limine_x64.efi' --unicode
-```
-
-Write the entry with `cmdline:` last (no trailing space), then pull in the
-kernel command line instead of typing it: in normal mode `:r /etc/kernel/cmdline`
-reads it in below, `kJ` joins it onto the `cmdline:` line.
-
-```sh
-nvim /boot/limine.conf
-```
-
-```sh
-/boot/limine.conf
------------------
-timeout: 3
-
-/Arch Linux (install)
-    protocol: linux
-    path: boot():/vmlinuz-linux
-    module_path: boot():/initramfs-linux.img
-    cmdline: #:r /etc/kernel/cmdline
-```
-
-### Password
-
-Set root password:
-
-```sh
-passwd
-```
+It automates the rest of the install process, refer to install.sh in aarbs. 
+It can be run again after a failure.
 
 ### Reboot
 
-Exit chroot and reboot:
-
 ```sh
-exit
 umount -R /mnt
 reboot
 ```
