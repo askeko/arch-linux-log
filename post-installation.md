@@ -12,17 +12,16 @@
 <!--toc:start-->
 - [Post installation](#post-installation)
   - [Install Script](#install-script)
-    - [Testing Unpublished Changes](#testing-unpublished-changes)
-  - [First Login](#first-login)
   - [Security](#security)
     - [YubiKey Disk Unlock](#yubikey-disk-unlock)
+    - [YubiKey Login](#yubikey-login)
   - [Accounts](#accounts)
     - [GitHub](#github)
     - [Claude Code and Codex](#claude-code-and-codex)
     - [Bitwarden (rbw)](#bitwarden-rbw)
   - [Programs](#programs)
-    - [Firefox](#firefox)
-    - [Neovim](#neovim)
+    - [Nix](#nix)
+    - [Steam](#steam)
   - [WireGuard](#wireguard)
   - [Firewall](#firewall)
   - [Snapshots](#snapshots)
@@ -50,9 +49,10 @@ Run script:
 sh aarbs.sh
 ```
 
-It installs the GPU drivers and programs, creates the user, applies [absrice]
-dotfiles with chezmoi, and sets up greetd, services, zram,
-snapshots and the Limine boot entries.
+It adds the CachyOS repositories and kernel, installs the GPU drivers (chwd)
+and programs, creates the user, applies [absrice] dotfiles with chezmoi, and
+sets up greetd, YubiKey login (PAM), services, DNS (systemd-resolved), Nix,
+zram, snapshots and the Limine boot entries.
 If it fails, check `/var/log/aarbs.log`, fix the cause and run it again.
 Reboot when it's done.
 
@@ -221,12 +221,12 @@ entry in the boot menu, to go back or remove later.
 ## Updating
 
 ```sh
-yay # repo and AUR packages
+paru # repo and AUR packages
 chezmoi update # pull and apply dotfile changes
 ```
 
-yay shows what changed in each AUR package's build files (the whole thing for
-new packages) before building. Read it, then answer "Proceed with install?".
+paru shows what changed in each AUR package's build files (the whole thing for
+new packages) before building. Read it before confirming.
 
 After installing another CachyOS kernel (e.g. `linux-cachyos-lts`), run
 `sudo chwd -a` so it gets the GPU driver modules too.
@@ -251,7 +251,7 @@ Screensharing: see [Hyprland screen-sharing][Hyprland Screen-Sharing] and
 
 ## Desktop Specific (lazarus)
 
-### SSD
+### Data SSD
 
 The NTFS data drive (UUID from abslab: `5672622A72620F55`, verify with
 `lsblk -f`). The kernel's ntfs3 driver needs no extra package.

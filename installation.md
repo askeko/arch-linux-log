@@ -204,7 +204,7 @@ microcode in a VM). `libfido2` (YubiKey unlock) and `plymouth` (boot splash)
 go into the initramfs. aarbs installs everything else later.
 
 ```sh
-pacstrap -K /mnt base linux linux-firmware amd-ucode btrfs-progs libfido2 plymouth limine efibootmgr networkmanager neovim curl
+pacstrap -K /mnt base linux linux-firmware amd-ucode btrfs-progs libfido2 plymouth limine efibootmgr networkmanager neovim
 ```
 
 Generate fstab and enter chroot:
@@ -249,14 +249,6 @@ monitor setup by hostname. Use something else, like `archtest`, in a VM.
 
 ```sh
 echo some_name > /etc/hostname # replace some_name with the hostname
-```
-
-```sh
-/etc/hosts
--------------
-127.0.0.1 localhost
-::1 localhost
-127.0.1.1 some_name.localdomain some_name # replace some_name with the hostname
 ```
 
 ### Initramfs
