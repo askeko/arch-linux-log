@@ -51,28 +51,13 @@ sh aarbs.sh
 ```
 
 It installs the GPU drivers and programs, creates the user, applies [absrice]
-with chezmoi (no need to import dotfiles), and sets up greetd, services, zram,
+dotfiles with chezmoi, and sets up greetd, services, zram,
 snapshots and the Limine boot entries.
 If it fails, check `/var/log/aarbs.log`, fix the cause and run it again.
 Reboot when it's done.
 
-### Testing Unpublished Changes
-
-aarbs clones the dotfiles from GitHub. To test local changes in a VM, copy
-`aarbs.sh` and `progs.csv` over, commit the absrice changes to a copy in
-`/tmp/absrice-test`, and point `dotfilesrepo` in `aarbs.sh` at that path.
-
-## First Login
-
 After the disk is unlocked you are logged in automatically (tuigreet only
-shows after a logout). `Mod+Shift+/` lists all keybinds.
-
-The first app that stores a secret (gh, Discord, Obsidian) asks to create the
-default keyring. Leave its password empty: the disk is already encrypted, and
-with autologin a password would mean an unlock prompt on every boot.
-
-Wallpapers go in `~/pictures/wallpapers` (`Mod+B` to pick one). Downloads,
-documents, pictures etc. all point to `~/tmp`, which is cleaned after 7 days.
+shows after a logout).
 
 ## Security
 
@@ -165,16 +150,6 @@ rbw login
 
 ## Programs
 
-### Firefox
-
-Sign in to sync the extensions (Tree Style Tab). The dotfiles only hide the
-tab bar.
-
-### Neovim
-
-The first start downloads LazyVim's plugins and Mason's language servers.
-Check with `:checkhealth lazyvim` and `:Mason`.
-
 ### Nix
 
 For programs needed once, and project dev shells. CLI tools only: GUI apps from
@@ -184,6 +159,13 @@ Nix can't find Arch's GPU drivers. Unused store paths are removed weekly.
 nix shell nixpkgs#ffmpeg # gone when the shell exits
 echo 'use flake' > .envrc && direnv allow # project with a flake.nix
 ```
+
+### Steam
+
+Select Proton-CachyOS as the default (Settings → Compatibility) or per game
+(Properties → Compatibility). Launch options `game-performance %command%`
+switch to the performance power profile while the game runs; with the overlay:
+`game-performance mangohud %command%`.
 
 ## WireGuard
 
@@ -246,6 +228,9 @@ chezmoi update # pull and apply dotfile changes
 yay shows what changed in each AUR package's build files (the whole thing for
 new packages) before building. Read it, then answer "Proceed with install?".
 
+After installing another CachyOS kernel (e.g. `linux-cachyos-lts`), run
+`sudo chwd -a` so it gets the GPU driver modules too.
+
 Edit dotfiles with `chezmoi edit <file>`, then `chezmoi diff` and
 `chezmoi apply`.
 
@@ -266,7 +251,7 @@ Screensharing: see [Hyprland screen-sharing][Hyprland Screen-Sharing] and
 
 ## Desktop Specific (lazarus)
 
-### Data SSD
+### SSD
 
 The NTFS data drive (UUID from abslab: `5672622A72620F55`, verify with
 `lsblk -f`). The kernel's ntfs3 driver needs no extra package.

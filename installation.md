@@ -55,7 +55,7 @@ gpg --keyserver-options auto-key-retrieve --verify archlinux-version-x86_64.iso.
 ### Prepare Installation Medium
 
 Write the ISO to a USB stick, replacing the path and drive appropriately
-(this erases the whole stick). Boot via UEFI with Secure Boot disabled.
+(this erases the whole stick).
 
 ```sh
 sudo dd bs=4M if=path/to/archlinux.iso of=/dev/sdx status=progress oflag=sync
@@ -132,7 +132,7 @@ cgdisk /dev/X
 The EFI partition holds the kernels for the bootable snapshots, hence 4G. No
 swap partition: aarbs sets up swap in compressed RAM (zram).
 
-After creating the partitions `write` and `quit`. Format the EFI partition:
+After creating the partitions: `write` and `quit`. Format the EFI partition:
 
 ```sh
 mkfs.fat -F 32 /dev/efi_system_partition
@@ -295,17 +295,24 @@ cp /usr/share/limine/BOOTX64.EFI /boot/EFI/limine/limine_x64.efi
 efibootmgr --create --disk /dev/X --part 1 --label "Limine" --loader '\EFI\limine\limine_x64.efi' --unicode
 ```
 
+Write the entry with `cmdline:` last (no trailing space), then pull in the
+kernel command line instead of typing it: in normal mode `:r /etc/kernel/cmdline`
+reads it in below, `kJ` joins it onto the `cmdline:` line.
+
 ```sh
-cat > /boot/limine.conf <<EOF
+nvim /boot/limine.conf
+```
+
+```sh
+/boot/limine.conf
+-----------------
 timeout: 3
 
 /Arch Linux (install)
     protocol: linux
     path: boot():/vmlinuz-linux
-    cmdline: $(cat /etc/kernel/cmdline)
     module_path: boot():/initramfs-linux.img
-EOF
-cat /boot/limine.conf # check the cmdline
+    cmdline: rd.luks.name={:r /etc/kernel/cmdline}
 ```
 
 ### Password
