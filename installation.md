@@ -312,7 +312,7 @@ timeout: 3
     protocol: linux
     path: boot():/vmlinuz-linux
     module_path: boot():/initramfs-linux.img
-    cmdline: rd.luks.name={:r /etc/kernel/cmdline}
+    cmdline: #:r /etc/kernel/cmdline
 ```
 
 ### Password
