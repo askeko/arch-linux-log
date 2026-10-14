@@ -5,6 +5,7 @@
 [absrice]: https://github.com/askeko/absrice
 [gh auth login]: https://cli.github.com/manual/gh_auth_login
 [rbw]: https://github.com/doy/rbw#configuration
+[Noctalia Calendar]: https://docs.noctalia.dev/noctalia/services/calendar/
 [Hyprland Screen-Sharing]: https://wiki.hypr.land/Useful-Utilities/Screen-Sharing/
 [systemd-cryptenroll]: https://wiki.archlinux.org/title/Systemd-cryptenroll
 [Snapper]: https://wiki.archlinux.org/title/Snapper
@@ -19,6 +20,7 @@
     - [GitHub](#github)
     - [Claude Code and Codex](#claude-code-and-codex)
     - [Bitwarden (rbw)](#bitwarden-rbw)
+    - [Calendars](#calendars)
   - [Programs](#programs)
     - [Nix](#nix)
     - [Steam](#steam)
@@ -92,7 +94,7 @@ passphrase prompt appears after 30 seconds.
 ### YubiKey Login
 
 Every login (TTY, tuigreet, lock screen) asks for the password, then a touch on
-a YubiKey (the key blinks; hyprlock shows no prompt). Until the mapping file
+a YubiKey (the key blinks; the lock screen shows no prompt). Until the mapping file
 exists the password alone logs in. Pulling out a key locks the screen, so
 register both keys into a temporary file (the swap locks; unlock with the
 password) and move it into place last:
@@ -104,7 +106,13 @@ pamu2fcfg -n >> ~/.config/Yubico/u2f_keys.new # second key
 mv ~/.config/Yubico/u2f_keys.new ~/.config/Yubico/u2f_keys
 ```
 
-Stuck lock screen: `Ctrl+Alt+F2`, log in (password + touch), `pkill -USR1 hyprlock`.
+Stuck lock screen: `Ctrl+Alt+F2`, log in (password + touch), stop the lock
+screen and clear Hyprland's "lock screen died" screen:
+
+```sh
+systemctl --user restart noctalia
+hyprctl --instance 0 eval 'hl.clear_crashed_lockscreen()'
+```
 
 Both keys lost: boot the Arch ISO, unlock with the recovery key, delete the
 mapping file:
@@ -148,6 +156,49 @@ rbw login
 ```
 
 `Mod+M` opens the password menu.
+
+### Calendars
+
+Noctalia shows calendar events in the control center calendar ([Noctalia
+Calendar]). Accounts are not tracked in the dotfiles (an ICS link is a secret
+URL). Noctalia merges every `*.toml` in `~/.config/noctalia/`, so keep them in
+their own file. Accounts written by hand do not enable the service, so add
+`enabled = true` (saving through Settings does it for you):
+
+```sh
+install -m 600 /dev/null ~/.config/noctalia/calendar.toml
+$EDITOR ~/.config/noctalia/calendar.toml
+noctalia config validate
+```
+
+```toml
+[calendar]
+enabled = true
+```
+
+Google (read-only, needs gnome-keyring, which is installed):
+
+```toml
+[calendar.account.google]
+type = "google"
+name = "Google"
+```
+
+Press Save and Connect in Noctalia's Settings and approve in the browser.
+
+Outlook / school (Microsoft has no CalDAV, so publish an ICS link): Outlook on
+the web, Settings, Calendar, Shared calendars, Publish a calendar. Pick the
+calendar, "Can view titles and locations", Publish, copy the ICS link:
+
+```toml
+[calendar.account.school]
+type       = "ics"
+name       = "School"
+server_url = "https://outlook.office365.com/owa/calendar/.../calendar.ics"
+```
+
+Save the link in Bitwarden. Anyone with it can read the calendar; unpublish and
+republish to rotate it. The feed can lag by hours.
 
 ## Programs
 
@@ -240,7 +291,7 @@ Edit dotfiles with `chezmoi edit <file>`, then `chezmoi diff` and
 ```sh
 hyprctl configerrors
 systemctl --user --failed
-journalctl --user -b -u waybar.service # or any other user service
+journalctl --user -b -u noctalia.service # or any other user service
 sudo journalctl -b -u greetd.service
 ```
 
